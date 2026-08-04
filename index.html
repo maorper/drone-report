@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת מחולל תחקיר רחפן</title>
+    <!-- ספריות לייצור והורדת PDF ישירה בנייד -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #1e3a8a;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --border-color: #d1d5db;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 15px;
+            direction: rtl;
+            color: #1f2937;
+        }
+
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .form-header {
+            text-align: center;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-header h1 {
+            margin: 0;
+            font-size: 22px;
+            color: var(--primary-color);
+        }
+
+        .section-box {
+            background: #f9fafb;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .section-box h2 {
+            margin-top: 0;
+            font-size: 16px;
+            color: var(--primary-color);
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        input[type="text"], input[type="date"], input[type="time"], select, textarea {
+            width: 100%;
+            padding: 9px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            direction: rtl;
+            background: #fff;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 65px;
+        }
+
+        .btn-generate {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* תבנית הסתר לרינדור ה-PDF */
+        #pdf-render-wrapper {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            width: 794px; /* רוחב מדויק של A4 בפיקסלים */
+            background: #ffffff;
+        }
+
+        .pdf-page-container {
+            width: 794px;
+            height: 1123px; /* גובה מדויק של A4 בפיקסלים - מונע עמודים ריקים! */
+            padding: 40px;
+            box-sizing: border-box;
+            position: relative;
+            background: #ffffff;
+            color: #000000;
+            direction: rtl;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+        }
+
+        .pdf-title {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 20px;
+        }
+
+        .two-boxes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .two-boxes-table td {
+            width: 50%;
+            vertical-align: top;
+            padding: 0 5px;
+        }
+
+        .bordered-box {
+            border: 1px solid #000;
+            padding: 10px;
+            min-height: 140px;
+        }
+
+        .box-line {
+            margin-bottom: 6px;
+        }
+
+        .sec-head {
+            font-weight: bold;
+            font-size: 15px;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        .underline-field {
+            border-bottom: 1px solid #000;
+            min-height: 25px;
+            padding: 2px 4px;
+            margin-bottom: 8px;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .page-footer-tag {
+            position: absolute;
+            bottom: 25px;
+            left: 40px;
+            font-size: 12px;
+            color: #333;
+        }
+
+        .sig-table {
+            width: 100%;
+            margin-top: 40px;
+            border-collapse: collapse;
+        }
+
+        .sig-table td {
+            width: 50%;
+            vertical-align: top;
+            padding: 0 15px;
+        }
+
+        .sig-row {
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .sig-field-line {
+            display: inline-block;
+            border-bottom: 1px solid #000;
+            width: 140px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <div class="form-header">
+        <h1>מילוי תחקיר התרסקות / אובדן רחפן</h1>
+        <p>מלא את הפרטים. בלחיצה יורד קובץ PDF ישירות לטלפון</p>
+    </div>
+
+    <form id="investigationForm">
+        <div class="section-box">
+            <h2>1. פרטים כלליים וזיהוי כלי</h2>
+            <div class="grid-2">
+                <div class="form-group"><label>1. תאריך האירוע</label><input type="date" id="eventDate" required></div>
+                <div class="form-group"><label>2. שעה</label><input type="time" id="eventTime" required></div>
+                <div class="form-group"><label>3. מקום האירוע</label><input type="text" id="eventLocation" placeholder="גזרה / נ.צ." required></div>
+                <div class="form-group"><label>4. יחידה</label><input type="text" id="unit" placeholder="גדוד / פלוגה" required></div>
+                <div class="form-group"><label>5. מטיס</label><input type="text" id="pilotName" required></div>
+                <div class="form-group"><label>1. סוג רחפן</label><input type="text" id="droneType" placeholder="לדוגמה: אלפא 4N" required></div>
+                <div class="form-group"><label>2. צ' רחפן</label><input type="text" id="droneSerial"></div>
+                <div class="form-group"><label>3. גרסת רחפן</label><input type="text" id="droneVersion"></div>
+                <div class="form-group"><label>4. גרסת ישל"ט</label><input type="text" id="remoteVersion"></div>
+                <div class="form-group">
+                    <label>5. כרטיס זיכרון ברחפן?</label>
+                    <select id="sdCard">
+                        <option value="כן">כן</option>
+                        <option value="לא">לא</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-box">
+            <h2>2. תנאים, אירוע וממצאים</h2>
+            <div class="form-group"><label>1. תנאי מזג האוויר (טמפ', רוח, לחות, גשם)</label><input type="text" id="weather"></div>
+            <div class="form-group"><label>2. מצב חסימות</label><input type="text" id="jammingState"></div>
+            <div class="form-group"><label>3. תיאור האירוע</label><textarea id="eventDescription"></textarea></div>
+            <div class="form-group">
+                <label>4. תוצאות האירוע</label>
+                <select id="eventResult">
+                    <option value="איבוד / התרסקות הרחפן">איבוד / התרסקות הרחפן</option>
+                    <option value="איבוד הרחפן">איבוד הרחפן</option>
+                    <option value="התרסקות הרחפן">התרסקות הרחפן</option>
+                </select>
+            </div>
+            <div class="form-group"><label>5. ממצאים</label><textarea id="findings"></textarea></div>
+        </div>
+
+        <div class="section-box">
+            <h2>3. כרונולוגיה, בדיקות וניסיון</h2>
+            <div class="form-group">
+                <label>א. רצף כרונולוגי (הכנות למשימה, תקינות אמצעים, כוחות שכנים, קורנים ידועים בגזרה, אישור תא רוקק / מב"א)</label>
+                <textarea id="chronology"></textarea>
+            </div>
+            <div class="form-group"><label>ב. נוה"ק בוצע ע"י</label><input type="text" id="nohakDoneBy"></div>
+            <div class="form-group"><label>ג. תוצאות בדיקת תקינות רחפן לפני המשימה</label><input type="text" id="preFlightCheck"></div>
+            <div class="grid-2">
+                <div class="form-group"><label>ד. ניסיון המטיס במצטבר (גיחות / שעות הטסה)</label><input type="text" id="pilotExperienceTotal"></div>
+                <div class="form-group"><label>ה. ניסיון המטיס בגזרה</label><input type="text" id="pilotExperienceSector"></div>
+            </div>
+            <div class="form-group"><label>6. ממצאים נוספים</label><textarea id="additionalFindings"></textarea></div>
+        </div>
+
+        <div class="section-box">
+            <h2>4. מסקנות, לקחים וחתימות</h2>
+            <div class="form-group"><label>7. מסקנות - א. גורמים ישירים</label><textarea id="directFactors"></textarea></div>
+            <div class="form-group"><label>7. מסקנות - ב. גורמים תורמים</label><textarea id="contributingFactors"></textarea></div>
+            <div class="form-group"><label>8. לקחים והמלצות</label><textarea id="recommendations"></textarea></div>
+            
+            <div class="grid-2">
+                <div class="section-box" style="margin-bottom:0;">
+                    <h3 style="margin-top:0; font-size:14px;">מפקד הכוח</h3>
+                    <div class="form-group"><label>שם</label><input type="text" id="cmdName"></div>
+                    <div class="form-group"><label>דרגה</label><input type="text" id="cmdRank"></div>
+                </div>
+                <div class="section-box" style="margin-bottom:0;">
+                    <h3 style="margin-top:0; font-size:14px;">מג"ד / סמג"ד</h3>
+                    <div class="form-group"><label>שם</label><input type="text" id="mgdName"></div>
+                    <div class="form-group"><label>דרגה</label><input type="text" id="mgdRank"></div>
+                </div>
+            </div>
+        </div>
+
+        <button type="button" class="btn-generate" id="btnDownload" onclick="generateDirectPDF()">הורד דוח תחקיר PDF 📄</button>
+    </form>
+</div>
+
+<!-- HTML TEMPLATE FOR PDF RENDER -->
+<div id="pdf-render-wrapper">
+    <!-- PAGE 1 -->
+    <div class="pdf-page-container" id="pdf-page-1">
+        <div class="pdf-title">תחקיר התרסקות / אובדן רחפן</div>
+
+        <table class="two-boxes-table">
+            <tr>
+                <td>
+                    <div class="bordered-box">
+                        <div class="box-line"><b>1. תאריך האירוע:</b> <span id="p_date"></span></div>
+                        <div class="box-line"><b>2. שעה:</b> <span id="p_time"></span></div>
+                        <div class="box-line"><b>3. מקום האירוע:</b> <span id="p_location"></span></div>
+                        <div class="box-line"><b>4. יחידה:</b> <span id="p_unit"></span></div>
+                        <div class="box-line"><b>5. מטיס:</b> <span id="p_pilot"></span></div>
+                    </div>
+                </td>
+                <td>
+                    <div class="bordered-box">
+                        <div class="box-line"><b>1. סוג רחפן:</b> <span id="p_drone_type"></span></div>
+                        <div class="box-line"><b>2. צ' רחפן:</b> <span id="p_drone_sn"></span></div>
+                        <div class="box-line"><b>3. גרסת רחפן:</b> <span id="p_drone_ver"></span></div>
+                        <div class="box-line"><b>4. גרסת ישל"ט:</b> <span id="p_remote_ver"></span></div>
+                        <div class="box-line"><b>5. כרטיס זיכרון:</b> <span id="p_sd"></span></div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="sec-head">1. תנאי מזג האוויר (טמפ', רוח, לחות, גשם ):</div>
+        <div class="underline-field" id="p_weather"></div>
+
+        <div class="sec-head">2. מצב חסימות:</div>
+        <div class="underline-field" id="p_jamming"></div>
+
+        <div class="sec-head">3. תיאור האירוע:</div>
+        <div class="underline-field" style="min-height: 45px;" id="p_desc"></div>
+
+        <div class="sec-head">4. תוצאות האירוע: <span id="p_result" style="font-weight:normal;"></span></div>
+
+        <div class="sec-head" style="margin-top: 15px;">5. ממצאים:</div>
+        <div class="underline-field" style="min-height: 45px;" id="p_findings"></div>
+
+        <div class="page-footer-tag">Page 1 | 3</div>
+    </div>
+
+    <!-- PAGE 2 -->
+    <div class="pdf-page-container" id="pdf-page-2">
+        <div class="sec-head">א. רצף כרונולוגי (הכנות למשימה, תקינות אמצעים, כוחות שכנים, קורנים ידועים בגזרה, אישור תא רוקק / מב"א) :</div>
+        <div class="underline-field" style="min-height: 80px;" id="p_chrono"></div>
+
+        <div class="sec-head" style="margin-top: 15px;">ב. נוה"ק בוצע ע"י : <span id="p_nohak" style="font-weight:normal;"></span></div>
+
+        <div class="sec-head" style="margin-top: 15px;">ג. תוצאות בדיקת תקינות רחפן לפני המשימה:</div>
+        <div class="underline-field" id="p_precheck"></div>
+
+        <div class="sec-head" style="margin-top: 15px;">ד. מה הניסיון של המטיס במצטבר (גיחות / שעות הטסה): <span id="p_exp_tot" style="font-weight:normal;"></span></div>
+
+        <div class="sec-head" style="margin-top: 15px;">ה. מה הניסיון של המטיס בגזרה: <span id="p_exp_sec" style="font-weight:normal;"></span></div>
+
+        <div class="sec-head" style="margin-top: 25px;">6. ממצאים נוספים:</div>
+        <div class="underline-field" style="min-height: 80px;" id="p_add_findings"></div>
+
+        <div class="page-footer-tag">Page 2 | 3</div>
+    </div>
+
+    <!-- PAGE 3 -->
+    <div class="pdf-page-container" id="pdf-page-3">
+        <div class="sec-head" style="font-size: 16px; text-decoration: underline;">7. מסקנות:</div>
+        
+        <div style="margin-right: 15px;">
+            <div class="sec-head">א. גורמים ישירים:</div>
+            <div class="underline-field" style="min-height: 50px;" id="p_direct"></div>
+
+            <div class="sec-head">ב. גורמים תורמים:</div>
+            <div class="underline-field" style="min-height: 50px;" id="p_contrib"></div>
+        </div>
+
+        <div class="sec-head" style="margin-top: 25px; font-size: 16px; text-decoration: underline;">8. לקחים והמלצות:</div>
+        <div class="underline-field" style="min-height: 70px;" id="p_recom"></div>
+
+        <table class="sig-table">
+            <tr>
+                <td>
+                    <div class="sig-row">מפקד הכוח</div>
+                    <div class="sig-row">שם: <span class="sig-field-line" id="p_cmd_name"></span></div>
+                    <div class="sig-row">דרגה: <span class="sig-field-line" id="p_cmd_rank"></span></div>
+                    <div class="sig-row" style="margin-top: 15px;">חתימה: <span class="sig-field-line"></span></div>
+                </td>
+                <td>
+                    <div class="sig-row">מג"ד / סמג"ד</div>
+                    <div class="sig-row">שם: <span class="sig-field-line" id="p_mgd_name"></span></div>
+                    <div class="sig-row">דרגה: <span class="sig-field-line" id="p_mgd_rank"></span></div>
+                    <div class="sig-row" style="margin-top: 15px;">חתימה: <span class="sig-field-line"></span></div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="page-footer-tag">Page 3 | 3</div>
+    </div>
+</div>
+
+<script>
+    function formatDate(d) {
+        if(!d) return '';
+        const parts = d.split('-');
+        return parts.length === 3 ? parts[2] + '/' + parts[1] + '/' + parts[0] : d;
+    }
+
+    async function generateDirectPDF() {
+        const btn = document.getElementById('btnDownload');
+        btn.innerText = "מייצר PDF... נא להמתין ⏳";
+        btn.disabled = true;
+
+        // Populate fields
+        document.getElementById('p_date').innerText = formatDate(document.getElementById('eventDate').value);
+        document.getElementById('p_time').innerText = document.getElementById('eventTime').value;
+        document.getElementById('p_location').innerText = document.getElementById('eventLocation').value;
+        document.getElementById('p_unit').innerText = document.getElementById('unit').value;
+        document.getElementById('p_pilot').innerText = document.getElementById('pilotName').value;
+        document.getElementById('p_drone_type').innerText = document.getElementById('droneType').value;
+        document.getElementById('p_drone_sn').innerText = document.getElementById('droneSerial').value;
+        document.getElementById('p_drone_ver').innerText = document.getElementById('droneVersion').value;
+        document.getElementById('p_remote_ver').innerText = document.getElementById('remoteVersion').value;
+        document.getElementById('p_sd').innerText = document.getElementById('sdCard').value;
+
+        document.getElementById('p_weather').innerText = document.getElementById('weather').value;
+        document.getElementById('p_jamming').innerText = document.getElementById('jammingState').value;
+        document.getElementById('p_desc').innerText = document.getElementById('eventDescription').value;
+        document.getElementById('p_result').innerText = document.getElementById('eventResult').value;
+        document.getElementById('p_findings').innerText = document.getElementById('findings').value;
+
+        document.getElementById('p_chrono').innerText = document.getElementById('chronology').value;
+        document.getElementById('p_nohak').innerText = document.getElementById('nohakDoneBy').value;
+        document.getElementById('p_precheck').innerText = document.getElementById('preFlightCheck').value;
+        document.getElementById('p_exp_tot').innerText = document.getElementById('pilotExperienceTotal').value;
+        document.getElementById('p_exp_sec').innerText = document.getElementById('pilotExperienceSector').value;
+        document.getElementById('p_add_findings').innerText = document.getElementById('additionalFindings').value;
+
+        document.getElementById('p_direct').innerText = document.getElementById('directFactors').value;
+        document.getElementById('p_contrib').innerText = document.getElementById('contributingFactors').value;
+        document.getElementById('p_recom').innerText = document.getElementById('recommendations').value;
+        
+        document.getElementById('p_cmd_name').innerText = document.getElementById('cmdName').value;
+        document.getElementById('p_cmd_rank').innerText = document.getElementById('cmdRank').value;
+        document.getElementById('p_mgd_name').innerText = document.getElementById('mgdName').value;
+        document.getElementById('p_mgd_rank').innerText = document.getElementById('mgdRank').value;
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'pt', 'a4');
+            
+            const pages = ['pdf-page-1', 'pdf-page-2', 'pdf-page-3'];
+
+            for (let i = 0; i < pages.length; i++) {
+                const pageEl = document.getElementById(pages[i]);
+                const canvas = await html2canvas(pageEl, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false
+                });
+
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                
+                if (i > 0) pdf.addPage();
+                
+                // Add page image exact A4 dimensions in pt (595.28 x 841.89)
+                pdf.addImage(imgData, 'JPEG', 0, 0, 595.28, 841.89);
+            }
+
+            // Direct download on device!
+            pdf.save('תחקיר_אירוע_רחפן.pdf');
+
+        } catch (err) {
+            alert("אירעה שגיאה ביצירת ה-PDF: " + err.message);
+        } finally {
+            btn.innerText = "הורד דוח תחקיר PDF 📄";
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
